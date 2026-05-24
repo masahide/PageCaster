@@ -1,0 +1,52 @@
+{
+  "name": "prepare-text current single-page baseline",
+  "input": {
+    "ocrRunId": "ocr-run-1",
+    "pages": [
+      {
+        "index": 1,
+        "json": {
+          "blocks": [
+            {
+              "text": "最初の文。"
+            },
+            {
+              "text": "次の文。"
+            }
+          ]
+        }
+      }
+    ],
+    "config": {
+      "llmEnabled": false,
+      "textChunkMaxChars": 6,
+      "textChunkMinChars": 5
+    }
+  },
+  "output": {
+    "chunks": [
+      {
+        "pageIndex": 1,
+        "order": 1,
+        "text": "最初の文。",
+        "charLength": 5
+      },
+      {
+        "pageIndex": 1,
+        "order": 2,
+        "text": "次の文。",
+        "charLength": 4
+      }
+    ],
+    "metadata": {
+      "pages": [
+        {
+          "index": 1,
+          "usedLlm": false,
+          "rawTextLength": 10,
+          "correctedTextLength": 9
+        }
+      ]
+    }
+  }
+}

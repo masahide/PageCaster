@@ -6,3 +6,5 @@ export const storageStatePath = path.join(authDir, "storage-state.json");
 export const dataDir = path.join(projectRoot, "data");
 export const screenshotsDir = path.join(dataDir, "screenshots");
 export const captureRunsDir = path.join(dataDir, "capture-runs");
+export const ocrDir = path.join(dataDir, "ocr");
+export const textDir = path.join(dataDir, "text");

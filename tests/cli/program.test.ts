@@ -6,7 +6,9 @@ describe("createProgram", () => {
     const handlers = {
       login: vi.fn(),
       capture: vi.fn(),
-      captureDebug: vi.fn()
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
     };
     const program = createProgram(handlers);
 
@@ -19,7 +21,9 @@ describe("createProgram", () => {
     const handlers = {
       login: vi.fn(),
       capture: vi.fn(),
-      captureDebug: vi.fn()
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
     };
     const program = createProgram(handlers);
 
@@ -35,7 +39,9 @@ describe("createProgram", () => {
     const handlers = {
       login: vi.fn(),
       capture: vi.fn(),
-      captureDebug: vi.fn()
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
     };
     const program = createProgram(handlers);
 
@@ -50,7 +56,9 @@ describe("createProgram", () => {
     const handlers = {
       login: vi.fn(),
       capture: vi.fn(),
-      captureDebug: vi.fn()
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
     };
     const program = createProgram(handlers);
 
@@ -59,5 +67,90 @@ describe("createProgram", () => {
     });
 
     expect(handlers.captureDebug).toHaveBeenCalledOnce();
+  });
+
+  it("dispatches ocr command", async () => {
+    const handlers = {
+      login: vi.fn(),
+      capture: vi.fn(),
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
+    };
+    const program = createProgram(handlers);
+
+    await program.parseAsync(["ocr", "--run-id", "run-1", "--pages", "1-2"], {
+      from: "user"
+    });
+
+    expect(handlers.ocr).toHaveBeenCalledWith({
+      runId: "run-1",
+      pages: "1-2"
+    });
+  });
+
+  it("dispatches prepare-text command", async () => {
+    const handlers = {
+      login: vi.fn(),
+      capture: vi.fn(),
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
+    };
+    const program = createProgram(handlers);
+
+    await program.parseAsync(
+      ["prepare-text", "--ocr-run-id", "ocr-run-1", "--pages", "1-2"],
+      { from: "user" }
+    );
+
+    expect(handlers.prepareText).toHaveBeenCalledWith({
+      ocrRunId: "ocr-run-1",
+      pages: "1-2",
+      ocrCorrection: true
+    });
+  });
+
+  it("dispatches prepare-text with exclude-toc", async () => {
+    const handlers = {
+      login: vi.fn(),
+      capture: vi.fn(),
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
+    };
+    const program = createProgram(handlers);
+
+    await program.parseAsync(
+      ["prepare-text", "--ocr-run-id", "ocr-run-1", "--exclude-toc"],
+      { from: "user" }
+    );
+
+    expect(handlers.prepareText).toHaveBeenCalledWith({
+      ocrRunId: "ocr-run-1",
+      excludeToc: true,
+      ocrCorrection: true
+    });
+  });
+
+  it("dispatches prepare-text without OCR correction", async () => {
+    const handlers = {
+      login: vi.fn(),
+      capture: vi.fn(),
+      captureDebug: vi.fn(),
+      ocr: vi.fn(),
+      prepareText: vi.fn()
+    };
+    const program = createProgram(handlers);
+
+    await program.parseAsync(
+      ["prepare-text", "--ocr-run-id", "ocr-run-1", "--no-ocr-correction"],
+      { from: "user" }
+    );
+
+    expect(handlers.prepareText).toHaveBeenCalledWith({
+      ocrRunId: "ocr-run-1",
+      ocrCorrection: false
+    });
   });
 });

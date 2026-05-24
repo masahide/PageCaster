@@ -106,3 +106,137 @@ corepack pnpm capture:debug
 - `data/capture-runs/<run-id>.json`
 
 `auth/storage-state.json` にはログイン状態が含まれるため、共有しないでください。
+
+## OCR
+
+NDLOCR-Lite を事前にインストールします。
+
+```powershell
+uv tool install .
+ndlocr-lite.exe --help
+```
+
+`.env`:
+
+```env
+OCR_ENGINE=ndloocr-lite
+NDLOCR_LITE_COMMAND=ndlocr-lite.exe
+NDLOCR_LITE_JSON_ONLY=true
+NDLOCR_LITE_ENABLE_TCY=false
+OCR_TIMEOUT_MS=120000
+```
+
+`--enable-tcy` は縦中横改善用ですが、NDLOCR-Liteのインストール状態によっては `tcy_wrapper` が見つからず失敗することがあります。まずは `false` でOCRを通し、必要になったら環境を整えて `true` にしてください。
+
+capture run 全体をOCR:
+
+```bash
+corepack pnpm ocr --run-id 20260522-012612
+```
+
+1枚だけOCR:
+
+```bash
+corepack pnpm ocr --image data/screenshots/20260522-012612/page-000001.png
+```
+
+出力:
+
+- `data/ocr/<run-id>/page-000001/`
+- `data/ocr/<run-id>/ocr-run.json`
+
+## Text Preparation
+
+OCR結果をTTSへ渡しやすい本文チャンクに整形します。複数ページを文書ストリームとして連結し、改ページで文が途切れている場合は自然につないでから、文末・段落・読点・page break 周辺の境界候補を使ってchunk化します。LM Studio は任意の後処理としてchunkごとの安全な `anchor / target / to` 修正候補だけを返し、本文全文の自由生成は採用しません。
+
+`.env`:
+
+```env
+LLM_ENABLED=true
+LLM_PROVIDER=lmstudio
+LLM_BASE_URL=http://192.168.10.37:1234/v1
+LLM_MODEL=google/gemma-4-26b-a4b
+LLM_TIMEOUT_MS=1200000
+LLM_CORRECTION_MODE=anchor
+LLM_MAX_TOKENS=10000
+LLM_MAX_EDIT_RATIO=0.25
+LLM_MAX_FIXES_PER_CHUNK=5
+LLM_MAX_ANCHOR_CHARS=40
+LLM_MAX_FIX_RATIO=0.25
+LLM_DEBUG_SAVE_RESPONSES=true
+TEXT_CHUNK_MAX_CHARS=240
+TEXT_CHUNK_MIN_CHARS=40
+TEXT_SPLIT_MODE=local
+TEXT_ENABLE_LLM_BOUNDARY=false
+TEXT_PAGE_BREAK_JOIN=true
+```
+
+LM Studio は OpenAI互換APIを有効にし、`http://192.168.10.37:1234` でアクセスできる状態にします。`LLM_MODEL` は LM Studio にロード済みのモデルIDを指定してください。reasoning-heavy なモデルは `content` に到達する前に時間がかかることがあるため、実データ検証では `LLM_MODEL` を明示して挙動を確認します。`LLM_TIMEOUT_MS=1200000` で1chunkあたり最大20分待つため、遅い呼び出しは `text-run.json` の `llmCalls[].elapsedMs` で確認できます。通信失敗時は `transportError` に fetch例外とcauseを保存します。`LLM_DEBUG_SAVE_RESPONSES=true` の場合、chunkごとのrequest/response、`content`、`reasoning_content` を `data/text/<run-id>/debug/llm/` に保存します。`LLM_ENABLED=false` の場合はLM Studioへ接続せず、ローカル整形済みchunkをそのまま保存します。
+
+LM Studioの接続確認:
+
+```powershell
+Invoke-RestMethod http://192.168.10.37:1234/v1/models
+```
+
+OCR run 全体をTTS向けテキストに整形:
+
+```bash
+corepack pnpm prepare-text --ocr-run-id 20260522-012612
+```
+
+ページを絞る場合:
+
+```bash
+corepack pnpm prepare-text --ocr-run-id 20260522-012612 --pages 1-2
+```
+
+目次ページをTTS対象から除外する場合:
+
+```bash
+corepack pnpm prepare-text --ocr-run-id 20260522-012612 --pages 2-4 --exclude-toc
+```
+
+除外されたページは `text-run.json` の `pages[].skipReason` に `TOC` と記録され、`chunks.json` には含まれません。
+
+1ページ分のOCR JSONだけを整形:
+
+```bash
+corepack pnpm prepare-text --ocr-json data/ocr/20260522-012612/page-000001/page-000001.json
+```
+
+LM Studioを使わずローカル整形だけで確認:
+
+```powershell
+$env:LLM_ENABLED="false"; corepack pnpm prepare-text --ocr-run-id 20260522-012612
+```
+
+出力:
+
+- `data/text/<run-id>/text-run.json`
+- `data/text/<run-id>/chunks.json`
+- `data/text/<run-id>/page-000001.raw.txt`
+- `data/text/<run-id>/page-000001.normalized.txt`
+- `data/text/<run-id>/page-000001.corrected.txt`
+
+`chunks.json` example:
+
+```json
+[
+  {
+    "id": "p000001-c001",
+    "pageIndex": 1,
+    "order": 1,
+    "text": "TTSへ渡す最終chunk本文。",
+    "charLength": 14,
+    "sourcePageIndexes": [1],
+    "boundaryEndId": "b0001",
+    "splitReason": "local",
+    "correction": {
+      "usedLlm": true,
+      "acceptedEditCount": 1,
+      "rejectedEditCount": 0
+    }
+  }
+]
+```

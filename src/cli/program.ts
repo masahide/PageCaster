@@ -1,5 +1,10 @@
 import { Command } from "commander";
 import { parsePageCount, parseTurnMode, type TurnMode } from "./options.js";
+import { validateOcrCliOptions, type OcrCliOptions } from "./ocrOptions.js";
+import {
+  validatePrepareTextOptions,
+  type PrepareTextOptions
+} from "../text/prepareTextOptions.js";
 
 type ProgramHandlers = {
   login: () => Promise<void>;
@@ -9,6 +14,8 @@ type ProgramHandlers = {
     confirmStart: boolean
   ) => Promise<void>;
   captureDebug: () => Promise<void>;
+  ocr: (options: OcrCliOptions) => Promise<void>;
+  prepareText: (options: PrepareTextOptions) => Promise<void>;
 };
 
 export function createProgram(handlers: ProgramHandlers): Command {
@@ -41,6 +48,30 @@ export function createProgram(handlers: ProgramHandlers): Command {
         parseTurnMode(options.turnMode),
         options.confirmStart
       );
+    });
+
+  program
+    .command("ocr")
+    .description("Run OCR for captured screenshots")
+    .option("--run-id <runId>", "capture run id to OCR")
+    .option("--image <path>", "single image path to OCR")
+    .option("--pages <filter>", "page filter: 1, 1-5, or 1,3,5")
+    .action(async (options: OcrCliOptions) => {
+      validateOcrCliOptions(options);
+      await handlers.ocr(options);
+    });
+
+  program
+    .command("prepare-text")
+    .description("Prepare OCR text for TTS chunks")
+    .option("--ocr-run-id <runId>", "OCR run id to prepare")
+    .option("--ocr-json <path>", "single OCR JSON path to prepare")
+    .option("--pages <filter>", "page filter: 1, 1-5, or 1,3,5")
+    .option("--exclude-toc", "skip pages that look like a table of contents")
+    .option("--no-ocr-correction", "disable optional LLM OCR correction after chunking")
+    .action(async (options: PrepareTextOptions) => {
+      validatePrepareTextOptions(options);
+      await handlers.prepareText(options);
     });
 
   program

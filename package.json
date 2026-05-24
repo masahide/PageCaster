@@ -9,6 +9,8 @@
     "kindle:login": "tsx src/cli/main.ts login",
     "capture": "tsx src/cli/main.ts capture",
     "capture:debug": "tsx src/cli/main.ts capture:debug",
+    "ocr": "tsx src/cli/main.ts ocr",
+    "prepare-text": "tsx src/cli/main.ts prepare-text",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
